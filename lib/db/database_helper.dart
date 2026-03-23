@@ -13,6 +13,48 @@ class DatabaseHelper {
     return _db!;
   }
 
+
+  Future<List<Map<String, dynamic>>> getHabitLogs(int habitId) async {
+  final db = await database;
+  return await db.query(
+    'habit_logs',
+    where: 'habit_id = ? AND completed = 1',
+    whereArgs: [habitId],
+    orderBy: 'date DESC',
+  );
+}
+
+  Future<int> calculateStreak(int habitId) async {
+  final logs = await getHabitLogs(habitId);
+
+  if (logs.isEmpty) return 0;
+
+  int streak = 0;
+  DateTime today = DateTime.now();
+  DateTime currentDay = DateTime(
+    today.year,
+    today.month,
+    today.day,
+  );
+
+  for (var log in logs) {
+    DateTime logDate = DateTime.parse(log['date']);
+
+    if (logDate == currentDay) {
+      streak++;
+      currentDay = currentDay.subtract(const Duration(days: 1));
+    } else if (logDate == currentDay.subtract(const Duration(days: 1))) {
+      streak++;
+      currentDay = currentDay.subtract(const Duration(days: 1));
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}
+
+
   Future<Database> _initDb() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'habits.db');

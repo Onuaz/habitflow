@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:habitflow/widgets/habit_card.dart';
 import '../db/database_helper.dart';
 import '../models/habit.dart';
 import 'add_habit_screen.dart';
@@ -54,9 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: habits.length,
               itemBuilder: (context, index) {
                 final habit = habits[index];
-                return ListTile(
-                  title: Text(habit.title),
-                  subtitle: Text(habit.description),
+                return HabitCard(
+                  habit: habit,
                   onTap: () => _navigateToDetail(habit),
                 );
               },

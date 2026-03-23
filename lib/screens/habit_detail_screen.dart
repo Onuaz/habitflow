@@ -13,6 +13,34 @@ class HabitDetailScreen extends StatefulWidget {
 }
 
 class _HabitDetailScreenState extends State<HabitDetailScreen> {
+  int streak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStreak();
+  }
+
+  Future<void> _loadStreak() async {
+    final db = DatabaseHelper.instance;
+    final s = await db.calculateStreak(widget.habit.id!);
+    setState(() {
+      streak = s;
+    });
+  }
+
+  Future<void> _markCompleted() async {
+    final db = await DatabaseHelper.instance.database;
+
+    await db.insert('habit_logs', {
+      'habit_id': widget.habit.id,
+      'date': DateTime.now().toIso8601String().substring(0, 10),
+      'completed': 1,
+    });
+
+    _loadStreak();
+  }
+
   Future<void> _deleteHabit() async {
     final db = await DatabaseHelper.instance.database;
     await db.delete('habits', where: 'id = ?', whereArgs: [widget.habit.id]);
@@ -38,7 +66,23 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.habit.description, style: const TextStyle(fontSize: 18)),
+            Text(
+              widget.habit.description,
+              style: const TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "Current Streak: $streak days",
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _markCompleted,
+              child: const Text("Mark as Completed Today"),
+            ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _editHabit,
@@ -50,7 +94,24 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text("Delete Habit"),
             ),
+            ElevatedButton(
+              onPressed: () async {
+              final db = await DatabaseHelper.instance.database;
+
+              await db.insert('habit_logs', {
+                'habit_id': widget.habit.id,
+                'date': DateTime.now().toIso8601String().substring(0, 10),
+                'completed': 1,
+              });
+
+              _loadStreak();
+              },
+              child: const Text("Mark as Completed Today"),
+            ),
+
+            
           ],
+
         ),
       ),
     );

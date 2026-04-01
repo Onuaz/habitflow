@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:habitflow/widgets/habit_card.dart';
 import '../db/database_helper.dart';
 import '../models/habit.dart';
 import 'add_habit_screen.dart';
@@ -23,49 +22,114 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadHabits() async {
     final db = await DatabaseHelper.instance.database;
-    final result = await db.query('habits');
+    final data = await db.query('habits');
+
     setState(() {
-      habits = result.map((e) => Habit.fromMap(e)).toList();
+      habits = data.map((e) => Habit.fromMap(e)).toList();
     });
   }
 
-  void _navigateToAddHabit() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AddHabitScreen()),
-    );
-    _loadHabits();
+  Future<Object> _getStreak(int habitId) async {
+    return await DatabaseHelper.instance.calculateStreak(habitId);
   }
 
-  void _navigateToDetail(Habit habit) async {
-    await Navigator.push(
+  Future<bool> _completedToday(int habitId) async {
+    return await DatabaseHelper.instance.isCompletedToday(habitId);
+  }
+
+  void _openAddHabit() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddHabitScreen()),
+    ).then((_) => _loadHabits());
+  }
+
+  void _openDetail(Habit habit) {
+    Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => HabitDetailScreen(habit: habit)),
-    );
-    _loadHabits();
+    ).then((_) => _loadHabits());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("HabitFlow")),
-      body: habits.isEmpty
-          ? const Center(child: Text("No habits yet. Add one!"))
-          : ListView.builder(
-              itemCount: habits.length,
-              itemBuilder: (context, index) {
-                final habit = habits[index];
-                return HabitCard(
-                  habit: habit,
-                  onTap: () => _navigateToDetail(habit),
-                );
-              },
-            ),
+      appBar: AppBar(
+        title: const Text("HabitFlow"),
+        backgroundColor: const Color(0xFF1E88E5),
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.pushNamed(context, '/settings');
+            },
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToAddHabit,
-        child: const Icon(Icons.add),
+        onPressed: _openAddHabit,
+        backgroundColor: const Color(0xFF43A047),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      body: ListView.builder(
+        itemCount: habits.length,
+        itemBuilder: (context, index) {
+          final habit = habits[index];
+
+          return FutureBuilder(
+            future: Future.wait([
+              _getStreak(habit.id!),
+              _completedToday(habit.id!),
+            ]),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const SizedBox();
+              }
+
+              final streak = snapshot.data![0] as int;
+              final completedToday = snapshot.data![1] as bool;
+
+              return Card(
+                color: const Color(0xFFF1F6FB),
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 3,
+                child: ListTile(
+                  onTap: () => _openDetail(habit),
+                  title: Text(
+                    habit.title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E88E5),
+                    ),
+                  ),
+                  subtitle: Text(
+                    "🔥 $streak‑day streak",
+                    style: const TextStyle(
+                      color: Color(0xFF43A047),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  trailing: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: completedToday
+                          ? const Color(0xFF43A047)
+                          : Colors.grey,
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 }
-

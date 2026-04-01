@@ -13,47 +13,88 @@ class DatabaseHelper {
     return _db!;
   }
 
+  Future<bool> isCompletedToday(int habitId) async {
+    final db = await database;
+    String today = DateTime.now().toIso8601String().substring(0, 10);
 
-  Future<List<Map<String, dynamic>>> getHabitLogs(int habitId) async {
-  final db = await database;
-  return await db.query(
-    'habit_logs',
-    where: 'habit_id = ? AND completed = 1',
-    whereArgs: [habitId],
-    orderBy: 'date DESC',
-  );
-}
+    final logs = await db.query(
+      'habit_logs',
+      where: 'habit_id = ? AND date = ? AND completed = 1',
+      whereArgs: [habitId, today],
+    );
 
-  Future<int> calculateStreak(int habitId) async {
-  final logs = await getHabitLogs(habitId);
-
-  if (logs.isEmpty) return 0;
-
-  int streak = 0;
-  DateTime today = DateTime.now();
-  DateTime currentDay = DateTime(
-    today.year,
-    today.month,
-    today.day,
-  );
-
-  for (var log in logs) {
-    DateTime logDate = DateTime.parse(log['date']);
-
-    if (logDate == currentDay) {
-      streak++;
-      currentDay = currentDay.subtract(const Duration(days: 1));
-    } else if (logDate == currentDay.subtract(const Duration(days: 1))) {
-      streak++;
-      currentDay = currentDay.subtract(const Duration(days: 1));
-    } else {
-      break;
-    }
+    return logs.isNotEmpty;
   }
 
-  return streak;
-}
+  Future<Map<String, bool>> getLast7DaysStatus(int habitId) async {
+    final db = await database;
 
+    DateTime today = DateTime.now();
+    Map<String, bool> result = {};
+
+    for (int i = 0; i < 7; i++) {
+      DateTime day = today.subtract(Duration(days: i));
+      String dateString = day.toIso8601String().substring(0, 10);
+
+      final logs = await db.query(
+        'habit_logs',
+        where: 'habit_id = ? AND date = ? AND completed = 1',
+        whereArgs: [habitId, dateString],
+      );
+
+      result[dateString] = logs.isNotEmpty;
+    }
+
+    return result;
+  }
+
+  Future<List<Map<String, dynamic>>> getHabitLogs(int habitId) async {
+    final db = await database;
+    return await db.query(
+      'habit_logs',
+      where: 'habit_id = ? AND completed = 1',
+      whereArgs: [habitId],
+      orderBy: 'date DESC',
+    );
+  }
+
+  Future<Object> calculateStreak(int habitId) async {
+    final db = await database;
+
+    // Check manual streak override
+    final habit = await db.query(
+      'habits',
+      where: 'id = ?',
+      whereArgs: [habitId],
+    );
+
+    final manual = habit.first['manual_streak'];
+    if (manual != null) return manual;
+
+    // Otherwise calculate normally
+    final logs = await getHabitLogs(habitId);
+    if (logs.isEmpty) return 0;
+
+    int streak = 0;
+    DateTime today = DateTime.now();
+    DateTime currentDay = DateTime(today.year, today.month, today.day);
+
+    for (var log in logs) {
+      DateTime logDate = DateTime.parse(log['date']);
+
+      if (logDate == currentDay) {
+        streak++;
+        currentDay = currentDay.subtract(const Duration(days: 1));
+      } else if (logDate == currentDay.subtract(const Duration(days: 1))) {
+        streak++;
+        currentDay = currentDay.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
 
   Future<Database> _initDb() async {
     final dbPath = await getDatabasesPath();
@@ -61,14 +102,14 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // bumped from 1 → 2
       onCreate: (db, version) async {
         await db.execute('''
-          CREATE TABLE habits(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+          CREATE TABLE habits (
+            id INTEGER PRIMARY KEY,
             title TEXT,
             description TEXT,
-            created_at TEXT
+            manual_streak INTEGER
           )
         ''');
 
@@ -80,6 +121,13 @@ class DatabaseHelper {
             completed INTEGER
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            'ALTER TABLE habits ADD COLUMN manual_streak INTEGER',
+          );
+        }
       },
     );
   }

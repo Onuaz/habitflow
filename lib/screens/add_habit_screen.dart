@@ -13,32 +13,47 @@ class AddHabitScreen extends StatefulWidget {
 
 class _AddHabitScreenState extends State<AddHabitScreen> {
   final titleController = TextEditingController();
-  final descController = TextEditingController();
+  final descriptionController = TextEditingController();
+  final streakController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+
     if (widget.habit != null) {
       titleController.text = widget.habit!.title;
-      descController.text = widget.habit!.description;
+      descriptionController.text = widget.habit!.description;
+
+      if (widget.habit!.manualStreak != null) {
+        streakController.text = widget.habit!.manualStreak.toString();
+      }
     }
   }
 
   Future<void> _saveHabit() async {
     final db = await DatabaseHelper.instance.database;
 
+    final title = titleController.text.trim();
+    final description = descriptionController.text.trim();
+    final manualStreak = streakController.text.isEmpty
+        ? null
+        : int.parse(streakController.text);
+
+    if (title.isEmpty) return;
+
     if (widget.habit == null) {
       await db.insert('habits', {
-        'title': titleController.text,
-        'description': descController.text,
-        'created_at': DateTime.now().toIso8601String(),
+        'title': title,
+        'description': description,
+        'manual_streak': manualStreak,
       });
     } else {
       await db.update(
         'habits',
         {
-          'title': titleController.text,
-          'description': descController.text,
+          'title': title,
+          'description': description,
+          'manual_streak': manualStreak,
         },
         where: 'id = ?',
         whereArgs: [widget.habit!.id],
@@ -50,9 +65,13 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.habit != null;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.habit == null ? "Add Habit" : "Edit Habit"),
+        title: Text(isEditing ? "Edit Habit" : "Add Habit"),
+        backgroundColor: const Color(0xFF1E88E5),
+        foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -62,14 +81,29 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               controller: titleController,
               decoration: const InputDecoration(labelText: "Habit Title"),
             ),
+            const SizedBox(height: 12),
             TextField(
-              controller: descController,
+              controller: descriptionController,
               decoration: const InputDecoration(labelText: "Description"),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+            TextField(
+              controller: streakController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: "Set Current Streak (optional)",
+              ),
+            ),
+            const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _saveHabit,
-              child: const Text("Save"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF43A047),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              child: Text(isEditing ? "Save Changes" : "Add Habit"),
             ),
           ],
         ),

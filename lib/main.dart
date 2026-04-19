@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'theme/theme_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/settings_screen.dart';
+// If you have it, keep it. If not, I’ll help you add it.
+import 'screens/welcome_screen.dart';
 
 void main() {
   runApp(
@@ -18,51 +21,50 @@ class HabitFlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: "HabitFlow",
 
-    return MaterialApp(
-      title: "HabitFlow",
-      theme: ThemeData(
-  brightness: Brightness.light,
-  primaryColor: const Color(0xFF1E88E5),
-  scaffoldBackgroundColor: Colors.white,
-  colorScheme: const ColorScheme.light(
-    primary: Color(0xFF1E88E5),
-    secondary: Color(0xFF43A047),
-  ),
-  appBarTheme: const AppBarTheme(
-    backgroundColor: Color(0xFF1E88E5),
-    foregroundColor: Colors.white,
-  ),
-  cardColor: const Color(0xFFF1F6FB),
-  elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Color(0xFF1E88E5),
-      foregroundColor: Colors.white,
-      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(10)),
-      ),
-    ),
-  ),
-),
+          // 🌟 START HERE (FIXED FLOW)
+          home: const WelcomeScreen(),
 
-      darkTheme: ThemeData(
-  brightness: Brightness.dark,
-  colorScheme: const ColorScheme.dark(
-    primary: Color(0xFF1E88E5),
-    secondary: Color(0xFF43A047),
-  ),
-  appBarTheme: const AppBarTheme(
-    backgroundColor: Color(0xFF1E88E5),
-    foregroundColor: Colors.white,
-  ),
-),
+          theme: ThemeData(
+            brightness: Brightness.light,
+            primaryColor: const Color(0xFF1E88E5),
+            scaffoldBackgroundColor: Colors.white,
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF1E88E5),
+              secondary: Color(0xFF43A047),
+            ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFF1E88E5),
+              foregroundColor: Colors.white,
+            ),
+            cardColor: Color(0xFFF1F6FB),
+          ),
 
-      themeMode: themeProvider.isDark ? ThemeMode.dark : ThemeMode.light,
-      home: const HomeScreen(),
-      routes: {
-        '/settings': (_) => const SettingsScreen(),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF1E88E5),
+              secondary: Color(0xFF43A047),
+            ),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFF1E88E5),
+              foregroundColor: Colors.white,
+            ),
+          ),
+
+          themeMode:
+              themeProvider.isDark ? ThemeMode.dark : ThemeMode.light,
+
+          routes: {
+            '/home': (_) => const HomeScreen(),
+            '/settings': (_) => const SettingsScreen(),
+          },
+        );
       },
     );
   }
